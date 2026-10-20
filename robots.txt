@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://shakuntala.kabitawithoutborders.org/sitemap.xml
