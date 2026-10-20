@@ -9,3 +9,10 @@
 /* Multilingual catalogue audit */
 .languages{flex-wrap:wrap;justify-content:flex-end}.languages a{padding:9px 3px;line-height:1.8}.languages [aria-current=page]{color:var(--rust);border-bottom:2px solid var(--rust)}.catalogue-note{font-size:17px;line-height:1.8;color:var(--muted);margin:24px 0 32px}html[lang=or] h1,html[lang=hi] h1{font-size:clamp(44px,6vw,76px);letter-spacing:0;line-height:1.55}html[lang=or] h2,html[lang=hi] h2{font-size:clamp(30px,4vw,48px);letter-spacing:0;line-height:1.6}html[lang=hi] body{font-family:'Noto Serif Devanagari','Kohinoor Devanagari','Nirmala UI',serif}html[lang=or] body{font-family:Odia,serif}html[lang=or] .prose,html[lang=hi] .prose{line-height:2}.poem-meta{overflow-wrap:anywhere}.poem-reading h1{font-family:Odia,serif}#poems{padding-bottom:35px}@media(max-width:760px){.header{flex-wrap:wrap;padding:18px 0;gap:12px}.header nav{gap:17px}.hero h1{overflow-wrap:anywhere}.prose .lead{font-size:23px}.poem-row h3{font-size:23px}.catalogue-note{font-size:16px}} 
 @font-face{font-family:'Noto Serif Devanagari';src:url('assets/TiroDevanagariHindi-Regular.woff2') format('woff2');font-weight:400;font-display:swap}[lang=hi]{font-family:'Noto Serif Devanagari','Kohinoor Devanagari',serif}
+
+.verse[lang="en"], .poem-title[lang="en"] { font-family: Newsreader, Georgia, serif; }
+
+/* Poem illustrations */
+.poem-row{grid-template-columns:35px 100px 1fr 180px 25px}.poem-thumbnail{width:100px;height:75px;object-fit:cover;border-radius:3px}.poem-art{margin:35px 0}.poem-art img{width:100%;height:auto}.poem-art figcaption{font:11px/1.6 Arial,sans-serif;color:var(--muted);margin-top:9px}@media(max-width:760px){.poem-row{grid-template-columns:24px 65px 1fr 18px;gap:10px}.poem-thumbnail{width:65px;height:65px}.poem-meta{grid-column:3;grid-row:2}.poem-row .arrow{grid-column:4;grid-row:1}.poem-row h3{font-size:20px}}
+
+.notebook-link{margin-left:24px}
