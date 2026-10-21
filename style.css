@@ -23,3 +23,7 @@
 /* A colourful signature and two original lines on each poem card. */
 .poet-name{color:#78503f;background:linear-gradient(110deg,#914b39 4%,#92702f 32%,#46674d 58%,#466774 80%,#79506b 100%);background-clip:text;-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .card-copy .card-excerpt{font-size:16px;line-height:1.95;color:var(--ink);margin:16px 0 18px}.card-excerpt span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.card-excerpt[lang=en]{font-family:Newsreader,Georgia,serif;font-size:19px}.card-copy{flex:1;display:flex;flex-direction:column}.card-copy>p:last-child{margin-top:auto;padding-top:12px}@media(forced-colors:active){.poet-name{background:none;-webkit-text-fill-color:currentColor}}
+
+/* Let the watercolour portrait dissolve into the page's paper. */
+.hero .portrait{padding:0;border:0;background:transparent;box-shadow:none}
+.hero .portrait img{mix-blend-mode:multiply;-webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 48%,#000 58%,rgba(0,0,0,.94) 68%,rgba(0,0,0,.55) 82%,transparent 100%);mask-image:radial-gradient(ellipse 50% 50% at 50% 48%,#000 58%,rgba(0,0,0,.94) 68%,rgba(0,0,0,.55) 82%,transparent 100%)}
