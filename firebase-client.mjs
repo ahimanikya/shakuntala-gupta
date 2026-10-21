@@ -1,12 +1,22 @@
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import {getAuth,setPersistence,browserLocalPersistence,GoogleAuthProvider,signInWithPopup,onIdTokenChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signOut,reload} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
-import {getFirestore,doc,getDocFromServer,setDoc,deleteDoc,collection,query,orderBy,limit,startAfter,getDocsFromServer,writeBatch,serverTimestamp,updateDoc} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+import {getFirestore,runTransaction,where,doc,getDocFromServer,setDoc,deleteDoc,collection,query,orderBy,limit,startAfter,getDocsFromServer,writeBatch,serverTimestamp,updateDoc} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 const app=initializeApp({projectId:'free-to-dream-pwb',appId:'1:535451384780:web:1ec2c5c6fa6a70f9fa3b69',apiKey:'AIzaSyCUiyY_LsRX9zfq1yrwLax7WmK8ox9akdo',authDomain:'free-to-dream-pwb.firebaseapp.com'},'shakuntala-submissions');
 export const auth=getAuth(app),db=getFirestore(app,'shakuntala');
 await auth.authStateReady();await setPersistence(auth,browserLocalPersistence);
-export {doc,getDocFromServer,setDoc,deleteDoc,collection,query,orderBy,limit,startAfter,getDocsFromServer,writeBatch,serverTimestamp,updateDoc};
+export {runTransaction,where,doc,getDocFromServer,setDoc,deleteDoc,collection,query,orderBy,limit,startAfter,getDocsFromServer,writeBatch,serverTimestamp,updateDoc};
 export const editorEmail='ahimanikya@gmail.com';
 export function friendly(error){if(error.code==='permission-denied')return 'Access was denied. Verify your email and ask the editor to approve your account. If you just sent a poem, wait one minute before sending another.';if(error.code==='unavailable')return 'The service is unavailable. Your saved notebook is safe; reconnect and retry.';if(error.code?.startsWith('auth/'))return ({'auth/popup-blocked':'Allow pop-ups for this site, then choose Continue with Google again.','auth/popup-closed-by-user':'Google sign-in was cancelled. You can try again or use email and password.','auth/account-exists-with-different-credential':'Use your existing email-and-password sign-in for this address.','auth/invalid-credential':'The email or password is incorrect.','auth/email-already-in-use':'This email already has an account. Sign in or reset its password.','auth/weak-password':'Choose a password with at least 12 characters.','auth/too-many-requests':'Please wait a little before trying again.'})[error.code]||'Sign-in could not be completed. Check your email, password and connection.';return error.message||'Please try again.';}
+export async function accountAccess(user){
+ if(!user?.emailVerified)return {approved:false,owner:false};
+ if(user.email===editorEmail)return {approved:true,owner:true};
+ const owner=await getDocFromServer(doc(db,'shakuntalaSettings','owner'));
+ if(owner.exists()&&owner.data().uid===user.uid&&owner.data().email===user.email)return {approved:true,owner:true};
+ const member=await getDocFromServer(doc(db,'shakuntalaAuthors',user.email));
+ const ref=doc(db,'shakuntalaSignups',user.uid);let status;
+ await runTransaction(db,async tx=>{const signup=await tx.get(ref);status=signup.exists()?signup.data().status:'pending';if(!signup.exists())tx.set(ref,{email:user.email,status:'pending',createdAt:serverTimestamp()})});
+ return {approved:member.exists(),owner:false,status};
+}
 export function mountAuth(box,onReady){
  const make=(tag,text)=>{const e=document.createElement(tag);e.textContent=text||'';return e};box.replaceChildren();
  const status=make('p'),fields=make('form'),email=make('input'),password=make('input');email.type='email';email.required=true;email.autocomplete='username';password.type='password';password.required=true;password.autocomplete='current-password';
@@ -15,12 +25,16 @@ export function mountAuth(box,onReady){
  login.type='submit';for(const b of[signup,reset,verify,refresh,logout,google])b.type='button';buttons.append(login,signup,reset);fields.append(buttons,make('p','Or'),google);box.append(status,fields,verify,refresh,logout);
  const busy=async fn=>{for(const b of box.querySelectorAll('button'))b.disabled=true;try{await fn()}catch(e){status.textContent=friendly(e)}finally{for(const b of box.querySelectorAll('button'))b.disabled=false}};
  let lastState;
- async function update(){const u=auth.currentUser;const state=u?u.uid+':'+u.emailVerified:'signed-out';if(state===lastState)return;lastState=state;fields.hidden=!!u;logout.hidden=!u;verify.hidden=refresh.hidden=!u||u.emailVerified;status.textContent=u?`Signed in as ${u.email}${u.emailVerified?'':'. Verify your email to continue.'}`:'Sign in to send or review poems privately.';await onReady(u?.emailVerified?u:null)}
+ async function update(){const u=auth.currentUser;const state=u?u.uid+':'+u.emailVerified:'signed-out';if(state===lastState)return;lastState=state;fields.hidden=!!u;logout.hidden=!u;verify.hidden=!u||u.emailVerified;refresh.hidden=!u;refresh.textContent=u?.emailVerified?'Check approval':'I have verified my email';status.textContent=u?`Signed in as ${u.email}${u.emailVerified?'':'. Verify your email to continue.'}`:'Sign in to send or manage poems. Your first sign-in requests editor approval.';await onReady(null);
+ if(!u?.emailVerified)return;
+ const access=await accountAccess(u);if(auth.currentUser?.uid!==u.uid)return;
+ if(access.approved){refresh.hidden=access.owner;status.textContent=access.owner?'Signed in · Poet’s library access enabled.':'Signed in · Submissions approved.';await onReady(u,access)}else status.textContent=access.status==='pending'?'Sign-up request sent. Waiting for the editor’s approval. Return here and choose Check approval after approval.':'Your account does not currently have access. Please contact the editor.';
+ }
  google.onclick=()=>busy(async()=>{const provider=new GoogleAuthProvider();await signInWithPopup(auth,provider);password.value='';await update()});
  fields.onsubmit=e=>{e.preventDefault();void busy(async()=>{await signInWithEmailAndPassword(auth,email.value.trim(),password.value);password.value='';await update()})};
  signup.onclick=()=>busy(async()=>{if(!fields.reportValidity())return;if(password.value.length<12)throw Error('Use a password of at least 12 characters.');await createUserWithEmailAndPassword(auth,email.value.trim(),password.value);password.value='';await sendEmailVerification(auth.currentUser);await update();status.textContent='Verification email sent. Follow its link, then return here.'});
  reset.onclick=()=>busy(async()=>{if(!email.reportValidity())return;await sendPasswordResetEmail(auth,email.value.trim());status.textContent='If an account exists, a password reset email is on its way.'});
- verify.onclick=()=>busy(async()=>{await sendEmailVerification(auth.currentUser);status.textContent='Verification email sent.'});refresh.onclick=()=>busy(async()=>{await reload(auth.currentUser);await auth.currentUser.getIdToken(true);await update()});logout.onclick=()=>busy(async()=>{await signOut(auth);await update()});return onIdTokenChanged(auth,()=>{void update().catch(e=>status.textContent=friendly(e))});
+ verify.onclick=()=>busy(async()=>{await sendEmailVerification(auth.currentUser);status.textContent='Verification email sent.'});refresh.onclick=()=>busy(async()=>{await reload(auth.currentUser);await auth.currentUser.getIdToken(true);lastState=undefined;await update()});logout.onclick=()=>busy(async()=>{await signOut(auth);await update()});return onIdTokenChanged(auth,()=>{void update().catch(e=>status.textContent=friendly(e))});
 }
 export async function submitPoem(id,poem){
  const u=auth.currentUser;if(!u?.emailVerified)throw Error('Sign in and verify your email first.');
