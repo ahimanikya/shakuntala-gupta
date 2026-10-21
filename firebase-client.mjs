@@ -1,0 +1,28 @@
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+import {getAuth,setPersistence,browserSessionPersistence,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signOut,reload} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getFirestore,doc,getDocFromServer,setDoc,deleteDoc,collection,query,orderBy,limit,startAfter,getDocsFromServer,writeBatch,serverTimestamp,updateDoc} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+const app=initializeApp({projectId:'free-to-dream-pwb',appId:'1:535451384780:web:1ec2c5c6fa6a70f9fa3b69',apiKey:'AIzaSyCUiyY_LsRX9zfq1yrwLax7WmK8ox9akdo',authDomain:'free-to-dream-pwb.firebaseapp.com'},'shakuntala-submissions');
+export const auth=getAuth(app),db=getFirestore(app,'shakuntala');
+await setPersistence(auth,browserSessionPersistence);await auth.authStateReady();
+export {doc,getDocFromServer,setDoc,deleteDoc,collection,query,orderBy,limit,startAfter,getDocsFromServer,writeBatch,serverTimestamp,updateDoc};
+export const editorEmail='ahimanikya@gmail.com';
+export function friendly(error){if(error.code==='permission-denied')return 'Access was denied. Verify your email and ask the editor to approve your account. If you just sent a poem, wait one minute before sending another.';if(error.code==='unavailable')return 'The service is unavailable. Your saved notebook is safe; reconnect and retry.';if(error.code?.startsWith('auth/'))return ({'auth/invalid-credential':'The email or password is incorrect.','auth/email-already-in-use':'This email already has an account. Sign in or reset its password.','auth/weak-password':'Choose a password with at least 12 characters.','auth/too-many-requests':'Please wait a little before trying again.'})[error.code]||'Sign-in could not be completed. Check your email, password and connection.';return error.message||'Please try again.';}
+export function mountAuth(box,onReady){
+ const make=(tag,text)=>{const e=document.createElement(tag);e.textContent=text||'';return e};box.replaceChildren();
+ const status=make('p'),fields=make('form'),email=make('input'),password=make('input');email.type='email';email.required=true;email.autocomplete='username';password.type='password';password.required=true;password.autocomplete='current-password';
+ for(const [label,input]of [['Email',email],['Password',password]]){const l=make('label',label);l.append(input);fields.append(l)}
+ const buttons=make('div');buttons.className='tools';const login=make('button','Sign in'),signup=make('button','Create account'),reset=make('button','Reset password'),verify=make('button','Send verification email'),refresh=make('button','I have verified my email'),logout=make('button','Sign out');
+ login.type='submit';for(const b of[signup,reset,verify,refresh,logout])b.type='button';buttons.append(login,signup,reset);fields.append(buttons);box.append(status,fields,verify,refresh,logout);
+ const busy=async fn=>{for(const b of box.querySelectorAll('button'))b.disabled=true;try{await fn()}catch(e){status.textContent=friendly(e)}finally{for(const b of box.querySelectorAll('button'))b.disabled=false}};
+ async function update(){const u=auth.currentUser;fields.hidden=!!u;logout.hidden=!u;verify.hidden=refresh.hidden=!u||u.emailVerified;status.textContent=u?`Signed in as ${u.email}${u.emailVerified?'':'. Verify your email to continue.'}`:'Sign in to send or review poems privately.';await onReady(u?.emailVerified?u:null)}
+ fields.onsubmit=e=>{e.preventDefault();void busy(async()=>{await signInWithEmailAndPassword(auth,email.value.trim(),password.value);password.value='';await update()})};
+ signup.onclick=()=>busy(async()=>{if(!fields.reportValidity())return;if(password.value.length<12)throw Error('Use a password of at least 12 characters.');await createUserWithEmailAndPassword(auth,email.value.trim(),password.value);password.value='';await sendEmailVerification(auth.currentUser);await update();status.textContent='Verification email sent. Follow its link, then return here.'});
+ reset.onclick=()=>busy(async()=>{if(!email.reportValidity())return;await sendPasswordResetEmail(auth,email.value.trim());status.textContent='If an account exists, a password reset email is on its way.'});
+ verify.onclick=()=>busy(async()=>{await sendEmailVerification(auth.currentUser);status.textContent='Verification email sent.'});refresh.onclick=()=>busy(async()=>{await reload(auth.currentUser);await auth.currentUser.getIdToken(true);await update()});logout.onclick=()=>busy(async()=>{await signOut(auth);await update()});void update();
+}
+export async function submitPoem(id,poem){
+ const u=auth.currentUser;if(!u?.emailVerified)throw Error('Sign in and verify your email first.');
+ const ref=doc(db,'shakuntalaSubmissions',id);const old=await getDocFromServer(ref);
+ if(old.exists()){const sorted=x=>Array.isArray(x)?x.map(sorted):x&&typeof x==='object'?Object.fromEntries(Object.keys(x).sort().map(k=>[k,sorted(x[k])])):x;if(old.data().authorUid!==u.uid||JSON.stringify(sorted(old.data().poem))!==JSON.stringify(sorted(poem)))throw Error('This reference has already been used. Close the preview and try again.');return id;}
+ const batch=writeBatch(db);batch.set(ref,{poem,authorUid:u.uid,authorEmail:u.email,createdAt:serverTimestamp(),status:'received'});batch.set(doc(db,'shakuntalaSubmissionLimits',u.uid),{at:serverTimestamp(),lastId:id});await batch.commit();return id;
+}
