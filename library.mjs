@@ -1,4 +1,4 @@
-import {f,saveLibraryPoem} from './library-client.mjs';
+import {f,saveLibraryPoem} from './library-client.mjs?v=owner2';
 import {artwork} from './submit-poem.mjs?v=owner2';
 const $=s=>document.querySelector(s),form=$('#cloud-editor'),message=s=>$('#library-message').textContent=s,make=(tag,text)=>{const e=document.createElement(tag);e.textContent=text||'';return e};let rows=[],current=null,art='',dirty=false,generation=0;
 const leave=()=>!dirty||confirm('Discard unsaved library edits?');
