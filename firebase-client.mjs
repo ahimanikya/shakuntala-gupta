@@ -1,5 +1,5 @@
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-import {getAuth,setPersistence,browserLocalPersistence,GoogleAuthProvider,signInWithPopup,onIdTokenChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signOut,reload} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {getAuth,setPersistence,browserLocalPersistence,GoogleAuthProvider,signInWithPopup,onIdTokenChanged,signOut,reload} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {getFirestore,runTransaction,where,doc,getDocFromServer,setDoc,deleteDoc,collection,query,orderBy,limit,startAfter,getDocsFromServer,writeBatch,serverTimestamp,updateDoc} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 const app=initializeApp({projectId:'free-to-dream-pwb',appId:'1:535451384780:web:1ec2c5c6fa6a70f9fa3b69',apiKey:'AIzaSyCUiyY_LsRX9zfq1yrwLax7WmK8ox9akdo',authDomain:'free-to-dream-pwb.firebaseapp.com'},'shakuntala-submissions');
 export const auth=getAuth(app),db=getFirestore(app,'shakuntala');
@@ -19,22 +19,17 @@ export async function accountAccess(user){
 }
 export function mountAuth(box,onReady){
  const make=(tag,text)=>{const e=document.createElement(tag);e.textContent=text||'';return e};box.replaceChildren();
- const status=make('p'),fields=make('form'),email=make('input'),password=make('input');email.type='email';email.required=true;email.autocomplete='username';password.type='password';password.required=true;password.autocomplete='current-password';
- for(const [label,input]of [['Email',email],['Password',password]]){const l=make('label',label);l.append(input);fields.append(l)}
- const buttons=make('div');buttons.className='tools';const login=make('button','Sign in'),signup=make('button','Create account'),reset=make('button','Reset password'),verify=make('button','Send verification email'),refresh=make('button','I have verified my email'),logout=make('button','Sign out'),google=make('button','Continue with Google');
- login.type='submit';for(const b of[signup,reset,verify,refresh,logout,google])b.type='button';buttons.append(login,signup,reset);fields.append(buttons,make('p','Or'),google);box.append(status,fields,verify,refresh,logout);
+ const status=make('p'),refresh=make('button','Check approval'),logout=make('button','Sign out'),google=make('button','Continue with Google');
+ for(const b of[refresh,logout,google])b.type='button';box.append(status,google,refresh,logout);
  const busy=async fn=>{for(const b of box.querySelectorAll('button'))b.disabled=true;try{await fn()}catch(e){status.textContent=friendly(e)}finally{for(const b of box.querySelectorAll('button'))b.disabled=false}};
  let lastState;
- async function update(){const u=auth.currentUser;const state=u?u.uid+':'+u.emailVerified:'signed-out';if(state===lastState)return;lastState=state;fields.hidden=!!u;logout.hidden=!u;verify.hidden=!u||u.emailVerified;refresh.hidden=!u;refresh.textContent=u?.emailVerified?'Check approval':'I have verified my email';status.textContent=u?`Signed in as ${u.email}${u.emailVerified?'':'. Verify your email to continue.'}`:'Sign in to send or manage poems. Your first sign-in requests editor approval.';await onReady(null);
+ async function update(){const u=auth.currentUser;const state=u?u.uid+':'+u.emailVerified:'signed-out';if(state===lastState)return;lastState=state;google.hidden=!!u;logout.hidden=!u;refresh.hidden=!u;refresh.textContent=u?.emailVerified?'Check approval':'I have verified my email';status.textContent=u?`Signed in as ${u.email}${u.emailVerified?'':'. Verify your email to continue.'}`:'Sign in to send or manage poems. Your first sign-in requests editor approval.';await onReady(null);
  if(!u?.emailVerified)return;
  const access=await accountAccess(u);if(auth.currentUser?.uid!==u.uid)return;
  if(access.approved){refresh.hidden=access.owner;status.textContent=access.owner?'Signed in · Poet’s library access enabled.':'Signed in · Submissions approved.';await onReady(u,access)}else status.textContent=access.status==='pending'?'Sign-up request sent. Waiting for the editor’s approval. Return here and choose Check approval after approval.':'Your account does not currently have access. Please contact the editor.';
  }
- google.onclick=()=>busy(async()=>{const provider=new GoogleAuthProvider();await signInWithPopup(auth,provider);password.value='';await update()});
- fields.onsubmit=e=>{e.preventDefault();void busy(async()=>{await signInWithEmailAndPassword(auth,email.value.trim(),password.value);password.value='';await update()})};
- signup.onclick=()=>busy(async()=>{if(!fields.reportValidity())return;if(password.value.length<12)throw Error('Use a password of at least 12 characters.');await createUserWithEmailAndPassword(auth,email.value.trim(),password.value);password.value='';await sendEmailVerification(auth.currentUser);await update();status.textContent='Verification email sent. Follow its link, then return here.'});
- reset.onclick=()=>busy(async()=>{if(!email.reportValidity())return;await sendPasswordResetEmail(auth,email.value.trim());status.textContent='If an account exists, a password reset email is on its way.'});
- verify.onclick=()=>busy(async()=>{await sendEmailVerification(auth.currentUser);status.textContent='Verification email sent.'});refresh.onclick=()=>busy(async()=>{await reload(auth.currentUser);await auth.currentUser.getIdToken(true);lastState=undefined;await update()});logout.onclick=()=>busy(async()=>{await signOut(auth);await update()});return onIdTokenChanged(auth,()=>{void update().catch(e=>status.textContent=friendly(e))});
+ google.onclick=()=>busy(async()=>{const provider=new GoogleAuthProvider();await signInWithPopup(auth,provider);await update()});
+ refresh.onclick=()=>busy(async()=>{await reload(auth.currentUser);await auth.currentUser.getIdToken(true);lastState=undefined;await update()});logout.onclick=()=>busy(async()=>{await signOut(auth);await update()});return onIdTokenChanged(auth,()=>{void update().catch(e=>status.textContent=friendly(e))});
 }
 export async function submitPoem(id,poem){
  const u=auth.currentUser;if(!u?.emailVerified)throw Error('Sign in and verify your email first.');

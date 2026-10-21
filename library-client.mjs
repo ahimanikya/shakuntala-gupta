@@ -1,4 +1,4 @@
-import * as f from './firebase-client.mjs?v=owner1';
+import * as f from './firebase-client.mjs?v=owner2';
 export {f};
 export async function saveLibraryPoem(id,poem,visible,expected){
  const bytes=x=>new TextEncoder().encode(x).length;if(!poem.title.trim())throw Error('Add a title.');if(bytes(poem.title)>1200||bytes(poem.category)>320||bytes(poem.publicationCredits)>20000||bytes(poem.artAlt)>2000||poem.art.length>650000||Object.values(poem.versions).some(v=>bytes(v.title)>1200||bytes(v.body)>90000))throw Error('A poem field is too long. Shorten it before saving.');
